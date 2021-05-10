@@ -1,6 +1,6 @@
 from typing import Any
 
-from scy.tokens import TokenType, Token
+from scy.tokens import TokenType, Token, KEYWORDS
 from scy.utils import find_line
 
 
@@ -26,7 +26,7 @@ class Tokenizer:
         while not self.is_at_end():
             self.start = self.current
             self.scan()
-        
+
         self.tokens.append(Token(TokenType.EOF, '', self.line))
         return self.tokens
 
@@ -66,10 +66,14 @@ class Tokenizer:
             self.add_token(TokenType.GREATER_EQUAL if self.match('=') else TokenType.GREATER)
         elif c == '/':
             self.add_token(TokenType.SLASH_SLASH if self.match('/') else TokenType.SLASH)
+        elif c == '&':
+            self.add_token(TokenType.AMPERSAND_AMPERSAND if self.match('&') else TokenType.AMPERSAND)
+        elif c == '|':
+            self.add_token(TokenType.PIPE_PIPE if self.match('|') else TokenType.PIPE)
         elif c == '#':
             while self.peek() != '\n' and not self.is_at_end():
                 self.advance()
-        
+
         elif c in ' \r\t':
             pass
 
@@ -82,9 +86,20 @@ class Tokenizer:
 
         elif self.is_digit(c):
             self.number()
+        elif self.is_alpha(c):
+            self.identifier()
 
         else:
             raise self.error('Unexpected character.')
+
+    def identifier(self) -> None:
+        while self.is_alpha_numeric(self.peek()):
+            self.advance()
+        text: str = self.source[self.start:self.current]
+        type: TokenType = KEYWORDS.get(text, TokenType.IDENTIFIER)
+        if type is None:
+            raise self.error(f'Reserved keyword {text!r}.')
+        self.add_token(type)
 
     def number(self) -> None:
         while self.is_digit(self.peek()):
@@ -113,7 +128,7 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(f'Invalid hex string: {data!r}.') from None
+                raise self.error(f'Invalid hex string {data!r}.') from None
         elif code == 'u':
             self.advance()
             data = self.advance()
@@ -123,7 +138,7 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(f'Invalid hex string: {data!r}.') from None
+                raise self.error(f'Invalid hex string {data!r}.') from None
         elif code == 'U':
             self.advance()
             data = self.advance()
@@ -133,7 +148,7 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(f'Invalid hex string: {data!r}.') from None
+                raise self.error(f'Invalid hex string {data!r}.') from None
 
     def string(self, end: str) -> None:
         result = ''
@@ -171,6 +186,14 @@ class Tokenizer:
         if self.current + 1 >= len(self.source):
             return '\0'
         return self.source[self.current + 1]
+
+    def is_alpha(self, c: str) -> bool:
+        return ((c >= 'a' and c <= 'z')
+             or (c >= 'A' and c <= 'Z')
+             or c == '_')
+
+    def is_alpha_numeric(self, c: str) -> bool:
+        return self.is_alpha(c) or self.is_digit(c)
 
     def is_digit(self, c: str) -> bool:
         return c >= '0' and c <= '9'
