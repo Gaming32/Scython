@@ -1,3 +1,13 @@
 # myvar = 5 + 3 // 2;
 # a = 5 + a + 3;
-a = (b = 5);
+a = 5;
+if (a) {
+    b = a + 10;
+} else if (b) {
+    6 + 7;
+} else if (None) {
+    True + true;
+} else {
+    5;
+}
+5+ 35;

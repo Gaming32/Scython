@@ -19,7 +19,22 @@ class Parser:
         self.current = 0
 
     def statement(self) -> ast.stmt:
+        if self.match_(TokenType.IF):
+            return self.if_statement()
         return self.expression_statement()
+
+    def if_statement(self) -> ast.If:
+        if_word = self.previous()
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        condition = self.expression(False)
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.")
+        then_branch = self.optional_block()
+        if self.match_(TokenType.ELSE):
+            else_branch = self.optional_block()
+        else:
+            else_branch = []
+        return self.ast_token(condition, then_branch, else_branch,
+                              klass=ast.If, first=if_word, last=self.previous())
 
     def expression_statement(self) -> Union[ast.Expr]:
         expr = self.expression()
@@ -40,6 +55,11 @@ class Parser:
             statement = ast.Expr(expr, **self.get_loc(expr, expr))
         self.consume(TokenType.SEMICOLON, "Expect ';' after statement.")
         return statement
+
+    def optional_block(self) -> list[ast.stmt]:
+        if self.match_(TokenType.LEFT_BRACE):
+            return self.block()
+        return [self.statement()]
 
     def block(self) -> list[ast.stmt]:
         statements = []
@@ -195,12 +215,17 @@ class Parser:
         else:
             raise self.error(self.peek(), "Expect expression.")
 
-    def ast_token(self, *args, klass: type[ast.AST] = ast.Constant) -> Any:
+    def ast_token(self, *args, klass: type[ast.AST] = ast.Constant,
+                  first: Token = None, last: Token = None) -> Any:
+        if first is None:
+            first = self.previous()
+        if last is None:
+            last = first
         result = klass(*args)
-        result.lineno = self.previous().line
-        result.end_lineno = result.lineno
-        result.col_offset = self.previous().column
-        result.end_col_offset = result.col_offset + len(self.previous().lexeme)
+        result.lineno = first.line
+        result.end_lineno = last.line
+        result.col_offset = first.column
+        result.end_col_offset = last.column + len(last.lexeme)
         return result
 
     def get_loc(self, left: ast.AST, right: ast.AST):
