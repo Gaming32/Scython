@@ -58,7 +58,10 @@ class Parser:
 
     def optional_block(self) -> list[ast.stmt]:
         if self.match_(TokenType.LEFT_BRACE):
-            return self.block()
+            result = self.block()
+            if not result:
+                result = [self.ast_token(klass=ast.Pass)]
+            return result
         elif self.match_(TokenType.SEMICOLON):
             # This is done so that ast.unparse still generates valid syntax for empty blocks
             return [self.ast_token(klass=ast.Pass)]
