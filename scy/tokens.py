@@ -99,19 +99,29 @@ class TokenGroup:
         TokenType.IS,
         TokenType.IN,
     }
+
+    BIT_SHIFT = {
+        TokenType.LESS_LESS,
+        TokenType.GREATER_GREATER,
+    }
+
     TERMS = {
         TokenType.MINUS,
         TokenType.PLUS,
     }
+
     FACTORS = {
         TokenType.STAR,
         TokenType.SLASH,
         TokenType.SLASH_SLASH,
+        TokenType.PERCENT,
     }
+
     UNARY_LOW = {
         TokenType.MINUS,
         TokenType.PLUS,
     }
+
     LITERALS = {
         TokenType.INTEGER,
         TokenType.DECIMAL,
@@ -171,10 +181,14 @@ COMPARISON_OPERATORS: dict[TokenType, ast.cmpop] = {
 }
 
 BINARY_OPERATORS: dict[TokenType, ast.operator] = {
-    TokenType.STAR:  ast.Mult,
-    TokenType.SLASH: ast.Div,
-    TokenType.PLUS:  ast.Add,
-    TokenType.MINUS: ast.Sub,
+    TokenType.LESS_LESS:       ast.LShift,
+    TokenType.GREATER_GREATER: ast.RShift,
+    TokenType.STAR:            ast.Mult,
+    TokenType.SLASH:           ast.Div,
+    TokenType.SLASH_SLASH:     ast.FloorDiv,
+    TokenType.PLUS:            ast.Add,
+    TokenType.MINUS:           ast.Sub,
+    TokenType.PERCENT:         ast.Mod,
 }
 
 UNARY_OPERATORS: dict[TokenType, ast.operator] = {

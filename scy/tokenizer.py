@@ -52,18 +52,36 @@ class Tokenizer:
             self.add_token(TokenType.MINUS)
         elif c == '+':
             self.add_token(TokenType.PLUS)
+        elif c == '~':
+            self.add_token(TokenType.TILDE)
         elif c == ';':
             self.add_token(TokenType.SEMICOLON)
+        elif c == '%':
+            self.add_token(TokenType.PERCENT)
+        elif c == '^':
+            self.add_token(TokenType.CARET)
         elif c == '*':
-            self.add_token(TokenType.STAR)
+            self.add_token(TokenType.STAR_STAR if self.match_('*') else TokenType.STAR)
         elif c == '!':
             self.add_token(TokenType.BANG_EQUAL if self.match_('=') else TokenType.BANG)
         elif c == '=':
             self.add_token(TokenType.EQUAL_EQUAL if self.match_('=') else TokenType.EQUAL)
         elif c == '<':
-            self.add_token(TokenType.LESS_EQUAL if self.match_('=') else TokenType.LESS)
+            if self.match_('='):
+                tok = TokenType.LESS_EQUAL
+            elif self.match_('<'):
+                tok = TokenType.LESS_LESS
+            else:
+                tok = TokenType.LESS
+            self.add_token(tok)
         elif c == '>':
-            self.add_token(TokenType.GREATER_EQUAL if self.match_('=') else TokenType.GREATER)
+            if self.match_('='):
+                tok = TokenType.GREATER_EQUAL
+            elif self.match_('>'):
+                tok = TokenType.GREATER_GREATER
+            else:
+                tok = TokenType.GREATER
+            self.add_token(tok)
         elif c == '/':
             self.add_token(TokenType.SLASH_SLASH if self.match_('/') else TokenType.SLASH)
         elif c == '&':

@@ -45,7 +45,7 @@ class Parser:
         return self.comparison()
 
     def comparison(self) -> ast.expr:
-        left: ast.expr = self.term()
+        left: ast.expr = self.bit_or()
         operators: list[ast.cmpop] = []
         extra: list[ast.expr] = []
         while self.match_(*TokenGroup.SINGLE_COMPARISON, TokenType.NOT):
@@ -59,13 +59,42 @@ class Parser:
                 operator = ast.NotIn()
             else:
                 operator = COMPARISON_OPERATORS[self.previous().type]()
-            right = self.term()
+            right = self.bit_or()
             operators.append(operator)
             extra.append(right)
         if operators:
             return ast.Compare(left, operators, extra)
         else:
             return left
+
+    def bit_or(self):
+        left = self.bit_xor()
+        while self.match_(TokenType.PIPE):
+            right = self.bit_xor()
+            left = ast.BinOp(left, ast.BitOr(), right)
+        return left
+
+    def bit_xor(self):
+        left = self.bit_and()
+        while self.match_(TokenType.CARET):
+            right = self.bit_and()
+            left = ast.BinOp(left, ast.BitXor(), right)
+        return left
+
+    def bit_and(self):
+        left = self.bit_shift()
+        while self.match_(TokenType.AMPERSAND):
+            right = self.bit_shift()
+            left = ast.BinOp(left, ast.BitAnd(), right)
+        return left
+
+    def bit_shift(self):
+        left = self.term()
+        while self.match_(*TokenGroup.BIT_SHIFT):
+            operator = BINARY_OPERATORS[self.previous().type]()
+            right = self.term()
+            left = ast.BinOp(left, operator, right)
+        return left
 
     def term(self) -> ast.expr:
         left = self.factor()
@@ -88,7 +117,20 @@ class Parser:
             operator = UNARY_OPERATORS[self.previous().type]()
             right = self.unary()
             return ast.UnaryOp(operator, right)
-        return self.primary()
+        return self.bit_invert()
+
+    def bit_invert(self) -> ast.expr:
+        if self.match_(TokenType.TILDE):
+            right = self.unary()
+            return ast.UnaryOp(ast.Invert(), right)
+        return self.power()
+
+    def power(self) -> ast.expr:
+        left = self.primary()
+        while self.match_(TokenType.STAR_STAR):
+            right = self.primary()
+            left = ast.BinOp(left, ast.Pow(), right)
+        return left
 
     def primary(self) -> ast.expr:
         if self.match_(TokenType.FALSE):
