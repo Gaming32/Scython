@@ -18,8 +18,9 @@ def main():
         filename = args.script.name
     except Exception:
         filename = '<unknown>'
-    tree = parse(source, filename)
-    # print(ast.dump(tree, indent=4))
+    # tree = parse(source, filename)
+    tree = parse(source, filename, 'eval')
+    print(ast.dump(tree, indent=4))
 
 
 if __name__ == '__main__':

@@ -27,7 +27,7 @@ class Tokenizer:
             self.start = self.current
             self.scan()
 
-        self.tokens.append(Token(TokenType.EOF, '', self.line))
+        self.tokens.append(Token(TokenType.EOF, '', self.line, self.column, self.current))
         return self.tokens
 
     def error(self, text: str) -> SyntaxError:
@@ -154,16 +154,14 @@ class Tokenizer:
         result = ''
         while self.peek() != end and not self.is_at_end():
             if self.peek() == '\n':
-                self.line += 1
-                self.column = 1
-                result += '\n'
+                raise self.error('Multiline strings not supported.')
             elif self.peek() == '\\':
                 result += self.escape()
             else:
                 result += self.peek()
             self.advance()
         if self.is_at_end():
-            raise self.error('Unterminated string.')
+            raise self.error('EOF reached during string.')
         self.advance()
         self.add_token_literal(TokenType.STRING, result)
 
@@ -214,7 +212,14 @@ class Tokenizer:
 
     def add_token_literal(self, type: TokenType, literal: Any) -> None:
         text: str = self.source[self.start:self.current]
-        self.tokens.append(Token(type, text, self.line, literal))
+        self.tokens.append(Token(
+            type,
+            text,
+            self.line,
+            self.column,
+            self.current,
+            literal
+        ))
 
 
 def tokenize(source: str, filename: str = '<unknown>') -> list[Token]:

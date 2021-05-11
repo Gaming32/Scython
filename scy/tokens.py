@@ -1,3 +1,4 @@
+import ast
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any, Optional
@@ -75,7 +76,40 @@ class Token:
     type: TokenType
     lexeme: str
     line: int
+    column: int
+    index: int
     literal: Any = None
+
+
+class TokenGroup:
+    SINGLE_COMPARISON = {
+        TokenType.BANG_EQUAL,
+        TokenType.EQUAL_EQUAL,
+        TokenType.LESS,
+        TokenType.LESS_EQUAL,
+        TokenType.GREATER,
+        TokenType.GREATER_EQUAL,
+        TokenType.IS,
+        TokenType.IN,
+    }
+    TERMS = {
+        TokenType.MINUS,
+        TokenType.PLUS,
+    }
+    FACTORS = {
+        TokenType.STAR,
+        TokenType.SLASH,
+        TokenType.SLASH_SLASH,
+    }
+    UNARY_LOW = {
+        TokenType.MINUS,
+        TokenType.PLUS,
+    }
+    LITERALS = {
+        TokenType.INTEGER,
+        TokenType.DECIMAL,
+        TokenType.STRING,
+    }
 
 
 KEYWORDS: dict[str, Optional[TokenType]] = {
@@ -115,4 +149,26 @@ KEYWORDS: dict[str, Optional[TokenType]] = {
     'while':    TokenType.WHILE,
     'with':     TokenType.WITH,
     'yield':    TokenType.YIELD,
+}
+
+COMPARISON_OPERATORS: dict[TokenType, ast.cmpop] = {
+    TokenType.LESS:          ast.Lt,
+    TokenType.LESS_EQUAL:    ast.LtE,
+    TokenType.GREATER:       ast.Gt,
+    TokenType.GREATER_EQUAL: ast.GtE,
+    TokenType.EQUAL_EQUAL:   ast.Eq,
+    TokenType.BANG_EQUAL:    ast.NotEq,
+}
+
+BINARY_OPERATORS: dict[TokenType, ast.operator] = {
+    TokenType.STAR:  ast.Mult,
+    TokenType.SLASH: ast.Div,
+    TokenType.PLUS:  ast.Add,
+    TokenType.MINUS: ast.Sub,
+}
+
+UNARY_OPERATORS: dict[TokenType, ast.operator] = {
+    TokenType.PLUS:  ast.UAdd,
+    TokenType.MINUS: ast.USub,
+    TokenType.BANG:  ast.Not,
 }
