@@ -20,7 +20,9 @@ class Parser:
 
     def statement(self) -> ast.stmt:
         expr = self.expression_statement()
-        if isinstance(expr.value, ast.Name) and self.match_(TokenType.EQUAL):
+        if self.match_(TokenType.EQUAL):
+            if not isinstance(expr.value, ast.Name):
+                raise self.error(self.previous(), 'Invalid assignment target.')
             extra = [expr.value, self.expression()]
             extra[0].ctx = ast.Store()
             while self.match_(TokenType.EQUAL):
