@@ -21,6 +21,8 @@ class Parser:
     def statement(self) -> ast.stmt:
         if self.match_(TokenType.IF):
             return self.if_statement()
+        elif self.match_(TokenType.WHILE):
+            return self.while_statement()
         return self.expression_statement()
 
     def if_statement(self) -> ast.If:
@@ -35,6 +37,19 @@ class Parser:
             else_branch = []
         return self.ast_token(condition, then_branch, else_branch,
                               klass=ast.If, first=if_word, last=self.previous())
+
+    def while_statement(self) -> ast.stmt:
+        while_word = self.previous()
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        condition = self.expression(False)
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after condition")
+        body = self.optional_block()
+        if self.match_(TokenType.ELSE):
+            else_branch = self.optional_block()
+        else:
+            else_branch = []
+        return self.ast_token(condition, body, else_branch,
+                              klass=ast.While, first=while_word, last=self.previous())
 
     def expression_statement(self) -> Union[ast.Expr]:
         expr = self.expression()
