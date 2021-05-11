@@ -1,4 +1,5 @@
 import ast
+from typing import Any
 from scy.tokenizer import Tokenizer
 from scy.utils import find_line
 
@@ -26,7 +27,10 @@ class Parser:
             values = [left, self.and_()]
             while self.match_(TokenType.PIPE_PIPE):
                 values.append(self.and_())
-            return ast.BoolOp(ast.Or(), values)
+            return ast.BoolOp(ast.Or(), values,
+                lineno=left.lineno, end_lineno=values[-1].end_lineno,
+                col_offset=left.col_offset, end_col_offset=values[-1].end_col_offset
+            )
         return left
 
     def and_(self) -> ast.expr:
@@ -35,13 +39,19 @@ class Parser:
             values = [left, self.not_()]
             while self.match_(TokenType.AMPERSAND_AMPERSAND):
                 values.append(self.not_())
-            return ast.BoolOp(ast.And(), values)
+            return ast.BoolOp(ast.And(), values,
+                lineno=left.lineno, end_lineno=values[-1].end_lineno,
+                col_offset=left.col_offset, end_col_offset=values[-1].end_col_offset
+            )
         return left
 
     def not_(self) -> ast.expr:
         if self.match_(TokenType.BANG):
             right = self.comparison()
-            return ast.UnaryOp(ast.Not(), right)
+            return ast.UnaryOp(ast.Not(), right,
+                lineno=right.lineno, end_lineno=right.end_lineno,
+                col_offset=right.col_offset, end_col_offset=right.end_col_offset
+            )
         return self.comparison()
 
     def comparison(self) -> ast.expr:
@@ -63,7 +73,10 @@ class Parser:
             operators.append(operator)
             extra.append(right)
         if operators:
-            return ast.Compare(left, operators, extra)
+            return ast.Compare(left, operators, extra,
+                lineno=left.lineno, end_lineno=extra[-1].end_lineno,
+                col_offset=left.col_offset, end_col_offset=extra[-1].end_col_offset
+            )
         else:
             return left
 
@@ -71,21 +84,30 @@ class Parser:
         left = self.bit_xor()
         while self.match_(TokenType.PIPE):
             right = self.bit_xor()
-            left = ast.BinOp(left, ast.BitOr(), right)
+            left = ast.BinOp(left, ast.BitOr(), right,
+                lineno=left.lineno, end_lineno=right.end_lineno,
+                col_offset=left.col_offset, end_col_offset=right.end_col_offset
+            )
         return left
 
     def bit_xor(self):
         left = self.bit_and()
         while self.match_(TokenType.CARET):
             right = self.bit_and()
-            left = ast.BinOp(left, ast.BitXor(), right)
+            left = ast.BinOp(left, ast.BitXor(), right,
+                lineno=left.lineno, end_lineno=right.end_lineno,
+                col_offset=left.col_offset, end_col_offset=right.end_col_offset
+            )
         return left
 
     def bit_and(self):
         left = self.bit_shift()
         while self.match_(TokenType.AMPERSAND):
             right = self.bit_shift()
-            left = ast.BinOp(left, ast.BitAnd(), right)
+            left = ast.BinOp(left, ast.BitAnd(), right,
+                lineno=left.lineno, end_lineno=right.end_lineno,
+                col_offset=left.col_offset, end_col_offset=right.end_col_offset
+            )
         return left
 
     def bit_shift(self):
@@ -93,7 +115,10 @@ class Parser:
         while self.match_(*TokenGroup.BIT_SHIFT):
             operator = BINARY_OPERATORS[self.previous().type]()
             right = self.term()
-            left = ast.BinOp(left, operator, right)
+            left = ast.BinOp(left, operator, right,
+                lineno=left.lineno, end_lineno=right.end_lineno,
+                col_offset=left.col_offset, end_col_offset=right.end_col_offset
+            )
         return left
 
     def term(self) -> ast.expr:
@@ -101,7 +126,10 @@ class Parser:
         while self.match_(*TokenGroup.TERMS):
             operator = BINARY_OPERATORS[self.previous().type]()
             right = self.factor()
-            left = ast.BinOp(left, operator, right)
+            left = ast.BinOp(left, operator, right,
+                lineno=left.lineno, end_lineno=right.end_lineno,
+                col_offset=left.col_offset, end_col_offset=right.end_col_offset
+            )
         return left
 
     def factor(self) -> ast.expr:
@@ -109,44 +137,64 @@ class Parser:
         while self.match_(*TokenGroup.FACTORS):
             operator = BINARY_OPERATORS[self.previous().type]()
             right = self.unary()
-            left = ast.BinOp(left, operator, right)
+            left = ast.BinOp(left, operator, right,
+                lineno=left.lineno, end_lineno=right.end_lineno,
+                col_offset=left.col_offset, end_col_offset=right.end_col_offset
+            )
         return left
 
     def unary(self) -> ast.expr:
         if self.match_(*TokenGroup.UNARY_LOW):
             operator = UNARY_OPERATORS[self.previous().type]()
             right = self.unary()
-            return ast.UnaryOp(operator, right)
+            return ast.UnaryOp(operator, right,
+                lineno=right.lineno, end_lineno=right.end_lineno,
+                col_offset=right.col_offset, end_col_offset=right.end_col_offset
+            )
         return self.bit_invert()
 
     def bit_invert(self) -> ast.expr:
         if self.match_(TokenType.TILDE):
             right = self.unary()
-            return ast.UnaryOp(ast.Invert(), right)
+            return ast.UnaryOp(ast.Invert(), right,
+                lineno=right.lineno, end_lineno=right.end_lineno,
+                col_offset=right.col_offset, end_col_offset=right.end_col_offset
+            )
         return self.power()
 
     def power(self) -> ast.expr:
         left = self.primary()
         while self.match_(TokenType.STAR_STAR):
             right = self.primary()
-            left = ast.BinOp(left, ast.Pow(), right)
+            left = ast.BinOp(left, ast.Pow(), right,
+                lineno=left.lineno, end_lineno=right.end_lineno,
+                col_offset=left.col_offset, end_col_offset=right.end_col_offset
+            )
         return left
 
     def primary(self) -> ast.expr:
         if self.match_(TokenType.FALSE):
-            return ast.Constant(False)
+            return self.constant(False)
         elif self.match_(TokenType.TRUE):
-            return ast.Constant(True)
+            return self.constant(True)
         elif self.match_(TokenType.NONE):
-            return ast.Constant(None)
+            return self.constant(None)
         elif self.match_(*TokenGroup.LITERALS):
-            return ast.Constant(self.previous().literal)
+            return self.constant(self.previous().literal)
         elif self.match_(TokenType.LEFT_PAREN):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
             return expr
         else:
             raise self.error(self.peek(), "Expect expression.")
+
+    def constant(self, value: Any) -> ast.Constant:
+        result = ast.Constant(value)
+        result.lineno = self.previous().line
+        result.end_lineno = result.lineno
+        result.col_offset = self.previous().column
+        result.end_col_offset = result.col_offset + len(self.previous().lexeme)
+        return result
 
     def match_(self, *types: TokenType) -> bool:
         if any(self.check(type) for type in types):
