@@ -18,16 +18,16 @@ class Parser:
         self.source = source
         self.current = 0
 
-    def statement(self) -> ast.stmt:
+    def statement(self) -> list[ast.stmt]:
         if self.match_(TokenType.FOR):
             return self.for_statement()
         elif self.match_(TokenType.IF):
-            return self.if_statement()
+            return [self.if_statement()]
         elif self.match_(TokenType.WHILE):
-            return self.while_statement()
-        return self.expression_statement()
+            return [self.while_statement()]
+        return [self.expression_statement()]
 
-    def for_statement(self) -> ast.stmt:
+    def for_statement(self) -> list[ast.stmt]:
         for_word = self.previous()
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
         if self.match_(TokenType.SEMICOLON):
@@ -119,7 +119,7 @@ class Parser:
             if fill_empty:
                 return [self.ast_token(klass=ast.Pass)]
             return []
-        return [self.statement()]
+        return self.statement()
 
     def block(self) -> list[ast.stmt]:
         statements = []
@@ -335,7 +335,7 @@ class Parser:
         elif mode == 'exec':
             statements = []
             while not self.is_at_end():
-                statements.append(self.statement())
+                statements.extend(self.statement())
             return ast.Module(body=statements, type_ignores=[])
         raise ValueError(f'No such parse mode named {mode!r}')
 
