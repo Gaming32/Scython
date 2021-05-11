@@ -19,11 +19,14 @@ class Parser:
         self.current = 0
 
     def statement(self) -> ast.stmt:
-        expr = self.expression_statement()
+        return self.expression_statement()
+
+    def expression_statement(self) -> Union[ast.Expr]:
+        expr = self.expression()
         if self.match_(TokenType.EQUAL):
-            if not isinstance(expr.value, ast.Name):
+            if not isinstance(expr, ast.Name):
                 raise self.error(self.previous(), 'Invalid assignment target.')
-            extra = [expr.value, self.expression()]
+            extra = [expr, self.expression()]
             extra[0].ctx = ast.Store()
             while self.match_(TokenType.EQUAL):
                 if isinstance(extra[-1], ast.Name):
@@ -32,13 +35,11 @@ class Parser:
                     raise self.error(self.previous(), 'Invalid assignment target.')
                 extra.append(self.expression())
             value = extra.pop()
-            expr = ast.Assign(targets=extra, value=value, **self.get_loc(extra[0], value))
+            statement = ast.Assign(targets=extra, value=value, **self.get_loc(extra[0], value))
+        else:
+            statement = ast.Expr(expr, **self.get_loc(expr, expr))
         self.consume(TokenType.SEMICOLON, "Expect ';' after statement.")
-        return expr
-
-    def expression_statement(self) -> ast.Expr:
-        expr = self.expression()
-        return ast.Expr(expr, **self.get_loc(expr, expr))
+        return statement
 
     def block(self) -> list[ast.stmt]:
         statements = []
