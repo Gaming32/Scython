@@ -40,6 +40,13 @@ class Parser:
         expr = self.expression()
         return ast.Expr(expr, **self.get_loc(expr, expr))
 
+    def block(self) -> list[ast.stmt]:
+        statements = []
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
+            statements.append(self.statement())
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+        return statements
+
     def expression(self, toplevel: bool = True) -> ast.expr:
         if not toplevel:
             return self.assignment_expression()
