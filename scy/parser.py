@@ -19,11 +19,47 @@ class Parser:
         self.current = 0
 
     def statement(self) -> ast.stmt:
-        if self.match_(TokenType.IF):
+        if self.match_(TokenType.FOR):
+            return self.for_statement()
+        elif self.match_(TokenType.IF):
             return self.if_statement()
         elif self.match_(TokenType.WHILE):
             return self.while_statement()
         return self.expression_statement()
+
+    def for_statement(self) -> ast.stmt:
+        for_word = self.previous()
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
+        if self.match_(TokenType.SEMICOLON):
+            initializer = None
+        else:
+            initializer = self.expression_statement()
+        if self.check(TokenType.SEMICOLON):
+            condition = None
+            condition_tok = self.peek()
+        else:
+            condition = self.expression(False)
+            condition_tok = None
+        self.consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
+        if self.match_(TokenType.RIGHT_PAREN):
+            increment = None
+        else:
+            increment = self.expression_statement(TokenType.RIGHT_PAREN,
+                                                  "Expect ')' after for clauses")
+        body = self.optional_block(increment is None)
+        if increment is not None:
+            body.append(increment)
+        if condition is None:
+            condition = self.ast_token(True, first=condition_tok)
+        if self.match_(TokenType.ELSE):
+            else_branch = self.optional_block()
+        else:
+            else_branch = []
+        result = [self.ast_token(condition, body, else_branch,
+                                 klass=ast.While, first=for_word, last=self.previous())]
+        if initializer is not None:
+            result.insert(0, initializer)
+        return result
 
     def if_statement(self) -> ast.If:
         if_word = self.previous()
@@ -51,7 +87,8 @@ class Parser:
         return self.ast_token(condition, body, else_branch,
                               klass=ast.While, first=while_word, last=self.previous())
 
-    def expression_statement(self) -> Union[ast.Expr]:
+    def expression_statement(self, end: TokenType = TokenType.SEMICOLON,
+                                   error: str = "Expect ';' after statement.") -> Union[ast.Expr]:
         expr = self.expression()
         if self.match_(TokenType.EQUAL):
             if not isinstance(expr, ast.Name):
@@ -68,18 +105,20 @@ class Parser:
             statement = ast.Assign(targets=extra, value=value, **self.get_loc(extra[0], value))
         else:
             statement = ast.Expr(expr, **self.get_loc(expr, expr))
-        self.consume(TokenType.SEMICOLON, "Expect ';' after statement.")
+        self.consume(end, error)
         return statement
 
-    def optional_block(self) -> list[ast.stmt]:
+    def optional_block(self, fill_empty: bool = True) -> list[ast.stmt]:
         if self.match_(TokenType.LEFT_BRACE):
             result = self.block()
-            if not result:
+            if not result and fill_empty:
                 result = [self.ast_token(klass=ast.Pass)]
             return result
         elif self.match_(TokenType.SEMICOLON):
             # This is done so that ast.unparse still generates valid syntax for empty blocks
-            return [self.ast_token(klass=ast.Pass)]
+            if fill_empty:
+                return [self.ast_token(klass=ast.Pass)]
+            return []
         return [self.statement()]
 
     def block(self) -> list[ast.stmt]:
