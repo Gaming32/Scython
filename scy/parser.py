@@ -18,25 +18,58 @@ class Parser:
         self.current = 0
 
     def expression(self) -> ast.expr:
+        return self.or_()
+
+    def or_(self) -> ast.expr:
+        left = self.and_()
+        if self.match_(TokenType.PIPE_PIPE):
+            values = [left, self.and_()]
+            while self.match_(TokenType.PIPE_PIPE):
+                values.append(self.and_())
+            return ast.BoolOp(ast.Or(), values)
+        return left
+
+    def and_(self) -> ast.expr:
+        left = self.not_()
+        if self.match_(TokenType.AMPERSAND_AMPERSAND):
+            values = [left, self.not_()]
+            while self.match_(TokenType.AMPERSAND_AMPERSAND):
+                values.append(self.not_())
+            return ast.BoolOp(ast.And(), values)
+        return left
+
+    def not_(self) -> ast.expr:
+        if self.match_(TokenType.BANG):
+            right = self.comparison()
+            return ast.UnaryOp(ast.Not(), right)
         return self.comparison()
 
     def comparison(self) -> ast.expr:
         left: ast.expr = self.term()
         operators: list[ast.cmpop] = []
-        remaining: list[ast.expr] = []
-        while self.match(*TokenGroup.SINGLE_COMPARISON):
-            operator = COMPARISON_OPERATORS[self.previous().type]()
+        extra: list[ast.expr] = []
+        while self.match_(*TokenGroup.SINGLE_COMPARISON, TokenType.NOT):
+            if self.previous().type == TokenType.IS:
+                if self.match_(TokenType.NOT):
+                    operator = ast.IsNot()
+                else:
+                    operator = ast.Is()
+            elif self.previous().type == TokenType.NOT:
+                self.consume(TokenType.IN, "'in' must follow 'not' in comparison.")
+                operator = ast.NotIn()
+            else:
+                operator = COMPARISON_OPERATORS[self.previous().type]()
             right = self.term()
             operators.append(operator)
-            remaining.append(right)
+            extra.append(right)
         if operators:
-            return ast.Compare(left, operators, remaining)
+            return ast.Compare(left, operators, extra)
         else:
             return left
 
     def term(self) -> ast.expr:
         left = self.factor()
-        while self.match(*TokenGroup.TERMS):
+        while self.match_(*TokenGroup.TERMS):
             operator = BINARY_OPERATORS[self.previous().type]()
             right = self.factor()
             left = ast.BinOp(left, operator, right)
@@ -44,34 +77,36 @@ class Parser:
 
     def factor(self) -> ast.expr:
         left = self.unary()
-        while self.match(*TokenGroup.FACTORS):
+        while self.match_(*TokenGroup.FACTORS):
             operator = BINARY_OPERATORS[self.previous().type]()
             right = self.unary()
             left = ast.BinOp(left, operator, right)
         return left
 
     def unary(self) -> ast.expr:
-        if self.match(*TokenGroup.UNARY_LOW):
+        if self.match_(*TokenGroup.UNARY_LOW):
             operator = UNARY_OPERATORS[self.previous().type]()
             right = self.unary()
             return ast.UnaryOp(operator, right)
         return self.primary()
 
     def primary(self) -> ast.expr:
-        if self.match(TokenType.FALSE):
+        if self.match_(TokenType.FALSE):
             return ast.Constant(False)
-        elif self.match(TokenType.TRUE):
+        elif self.match_(TokenType.TRUE):
             return ast.Constant(True)
-        elif self.match(TokenType.NONE):
+        elif self.match_(TokenType.NONE):
             return ast.Constant(None)
-        elif self.match(*TokenGroup.LITERALS):
+        elif self.match_(*TokenGroup.LITERALS):
             return ast.Constant(self.previous().literal)
-        elif self.match(TokenType.LEFT_PAREN):
+        elif self.match_(TokenType.LEFT_PAREN):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
             return expr
+        else:
+            raise self.error(self.peek(), "Expect expression.")
 
-    def match(self, *types: TokenType) -> bool:
+    def match_(self, *types: TokenType) -> bool:
         if any(self.check(type) for type in types):
             self.advance()
             return True
@@ -107,7 +142,9 @@ class Parser:
         return self.tokens[self.current - 1]
 
     def parse(self, mode: str = 'exec') -> ast.AST:
-        return self.expression()
+        if mode == 'eval':
+            return ast.Expression(body=self.expression())
+        raise ValueError(f'No such parse mode named {mode!r}')
 
 
 def parse_tree(tokens: list[Token], mode: str = 'exec', filename: str = '<unknown>', source: str = '') -> ast.AST:

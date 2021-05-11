@@ -57,19 +57,19 @@ class Tokenizer:
         elif c == '*':
             self.add_token(TokenType.STAR)
         elif c == '!':
-            self.add_token(TokenType.BANG_EQUAL if self.match('=') else TokenType.BANG)
+            self.add_token(TokenType.BANG_EQUAL if self.match_('=') else TokenType.BANG)
         elif c == '=':
-            self.add_token(TokenType.EQUAL_EQUAL if self.match('=') else TokenType.EQUAL)
+            self.add_token(TokenType.EQUAL_EQUAL if self.match_('=') else TokenType.EQUAL)
         elif c == '<':
-            self.add_token(TokenType.LESS_EQUAL if self.match('=') else TokenType.LESS)
+            self.add_token(TokenType.LESS_EQUAL if self.match_('=') else TokenType.LESS)
         elif c == '>':
-            self.add_token(TokenType.GREATER_EQUAL if self.match('=') else TokenType.GREATER)
+            self.add_token(TokenType.GREATER_EQUAL if self.match_('=') else TokenType.GREATER)
         elif c == '/':
-            self.add_token(TokenType.SLASH_SLASH if self.match('/') else TokenType.SLASH)
+            self.add_token(TokenType.SLASH_SLASH if self.match_('/') else TokenType.SLASH)
         elif c == '&':
-            self.add_token(TokenType.AMPERSAND_AMPERSAND if self.match('&') else TokenType.AMPERSAND)
+            self.add_token(TokenType.AMPERSAND_AMPERSAND if self.match_('&') else TokenType.AMPERSAND)
         elif c == '|':
-            self.add_token(TokenType.PIPE_PIPE if self.match('|') else TokenType.PIPE)
+            self.add_token(TokenType.PIPE_PIPE if self.match_('|') else TokenType.PIPE)
         elif c == '#':
             while self.peek() != '\n' and not self.is_at_end():
                 self.advance()
@@ -165,7 +165,7 @@ class Tokenizer:
         self.advance()
         self.add_token_literal(TokenType.STRING, result)
 
-    def match(self, expected: str) -> bool:
+    def match_(self, expected: str) -> bool:
         if self.is_at_end():
             return False
         if self.source[self.current] != expected:

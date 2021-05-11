@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 class TokenType(Enum):
     # Single-character tokens.
+    CARET = auto()
     LEFT_PAREN = auto()
     RIGHT_PAREN = auto()
     LEFT_BRACE = auto()
@@ -15,7 +16,8 @@ class TokenType(Enum):
     MINUS = auto()
     PLUS = auto()
     SEMICOLON = auto()
-    STAR = auto()
+    TILDE = auto()
+    PERCENT = auto()
 
     # One or two character tokens.
     AMPERSAND = auto()
@@ -28,10 +30,14 @@ class TokenType(Enum):
     EQUAL_EQUAL = auto()
     GREATER = auto()
     GREATER_EQUAL = auto()
+    GREATER_GREATER = auto()
     LESS = auto()
     LESS_EQUAL = auto()
+    LESS_LESS = auto()
     SLASH = auto()
     SLASH_SLASH = auto()
+    STAR = auto()
+    STAR_STAR = auto()
 
     # Literals.
     IDENTIFIER = auto()
@@ -60,6 +66,7 @@ class TokenType(Enum):
     IS = auto()
     NONE = auto()
     NONLOCAL = auto()
+    NOT = auto()
     RAISE = auto()
     RETURN = auto()
     TRUE = auto()
@@ -138,7 +145,7 @@ KEYWORDS: dict[str, Optional[TokenType]] = {
     'lambda':   None,
     'None':     TokenType.NONE,
     'nonlocal': TokenType.NONLOCAL,
-    'not':      None,
+    'not':      TokenType.NOT,
     'or':       None,
     'pass':     None,
     'raise':    TokenType.RAISE,
@@ -158,6 +165,9 @@ COMPARISON_OPERATORS: dict[TokenType, ast.cmpop] = {
     TokenType.GREATER_EQUAL: ast.GtE,
     TokenType.EQUAL_EQUAL:   ast.Eq,
     TokenType.BANG_EQUAL:    ast.NotEq,
+    # Still technically comparison operators
+    TokenType.IN:            ast.In,
+    TokenType.IS:            ast.Is,
 }
 
 BINARY_OPERATORS: dict[TokenType, ast.operator] = {
