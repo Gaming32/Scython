@@ -17,12 +17,12 @@ def main():
         filename = args.script.name
     except Exception:
         filename = '<unknown>'
-    tree = parse(source, filename, 'eval')
+    tree = parse(source, filename)
     if args.mode == 'dump':
         print(ast.dump(tree, indent=4))
     elif args.mode == 'run':
-        compiled = compile(tree, filename, 'eval')
-        print(eval(compiled))
+        compiled = compile(tree, filename, 'exec')
+        exec(compiled)
     elif args.mode == 'py':
         print(ast.unparse(tree))
 
