@@ -18,6 +18,31 @@ class Parser:
         self.source = source
         self.current = 0
 
+    def declaration(self) -> list[ast.stmt]:
+        if self.check(TokenType.DEF):
+            return [self.function('function', self.advance())]
+        return self.statement()
+
+    def function(self, kind: str, creator: Token) -> ast.FunctionDef:
+        name = self.consume(TokenType.IDENTIFIER, f'Expect {kind} name.')
+        self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
+        arguments = self.parse_args_def()
+        self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
+        body = self.block()
+        return self.ast_token(name.lexeme, arguments, body, [],
+            klass=ast.FunctionDef, first=creator, last=self.previous())
+
+    def parse_args_def(self) -> ast.arguments:
+        arguments = ast.arguments([], [], None, [], [], None, [])
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                self.consume(TokenType.IDENTIFIER, 'Expect argument name.')
+                arguments.args.append(self.ast_token(self.previous().lexeme, klass=ast.arg))
+                if not self.match_(TokenType.COMMA):
+                    break
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
+        return arguments
+
     def statement(self) -> list[ast.stmt]:
         if self.match_(TokenType.FOR):
             return self.for_statement()
@@ -142,12 +167,12 @@ class Parser:
             if fill_empty:
                 return [self.ast_token(klass=ast.Pass)]
             return []
-        return self.statement()
+        return self.declaration()
 
     def block(self) -> list[ast.stmt]:
         statements = []
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
-            statements.append(self.statement())
+            statements.extend(self.declaration())
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
         return statements
 
@@ -289,17 +314,22 @@ class Parser:
         return expr
 
     def finish_call(self, callee: ast.expr) -> ast.expr:
-        arguments = []
-        if not self.check(TokenType.RIGHT_PAREN):
-            while True:
-                arguments.append(self.expression(False))
-                if not self.match_(TokenType.COMMA):
-                    break
-        paren = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments")
-        return ast.Call(callee, arguments, [],
+        args, kwargs, paren = self.parse_args_call()
+        return ast.Call(callee, args, kwargs,
             lineno=callee.lineno, end_lineno=paren.line,
             col_offset=callee.col_offset, end_col_offset=paren.column + 1
         )
+
+    def parse_args_call(self) -> tuple[list[ast.expr], list[ast.keyword], Token]:
+        args = []
+        kwargs = []
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                args.append(self.expression(False))
+                if not self.match_(TokenType.COMMA):
+                    break
+        paren = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments")
+        return args, kwargs, paren
 
     def primary(self) -> ast.expr:
         if self.match_(TokenType.FALSE):
@@ -385,7 +415,7 @@ class Parser:
         elif mode == 'exec':
             statements = []
             while not self.is_at_end():
-                statements.extend(self.statement())
+                statements.extend(self.declaration())
             return ast.Module(body=statements, type_ignores=[])
         raise ValueError(f'No such parse mode named {mode!r}')
 
