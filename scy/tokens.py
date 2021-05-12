@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 class TokenType(Enum):
     # Single-character tokens.
+    AT = auto()
     CARET = auto()
     COLON = auto()
     LEFT_PAREN = auto()
@@ -114,6 +115,7 @@ class TokenGroup:
 
     FACTORS = {
         TokenType.STAR,
+        TokenType.AT,
         TokenType.SLASH,
         TokenType.SLASH_SLASH,
         TokenType.PERCENT,
@@ -188,6 +190,7 @@ BINARY_OPERATORS: dict[TokenType, ast.operator] = {
     TokenType.LESS_LESS:       ast.LShift,
     TokenType.GREATER_GREATER: ast.RShift,
     TokenType.STAR:            ast.Mult,
+    TokenType.AT:              ast.MatMult,
     TokenType.SLASH:           ast.Div,
     TokenType.SLASH_SLASH:     ast.FloorDiv,
     TokenType.PLUS:            ast.Add,

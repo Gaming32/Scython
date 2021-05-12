@@ -1,7 +1,6 @@
 def squares() {
     for (i = 0;; i = i + 1)
         yield from range(i ** 2);
-    await squares + 5;
 }
 
 # This generates 1753 lines of text lol
