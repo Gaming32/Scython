@@ -7,6 +7,7 @@ from typing import Any, Optional
 class TokenType(Enum):
     # Single-character tokens.
     CARET = auto()
+    COLON = auto()
     LEFT_PAREN = auto()
     RIGHT_PAREN = auto()
     LEFT_BRACE = auto()

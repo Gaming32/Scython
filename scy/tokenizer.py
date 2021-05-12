@@ -60,6 +60,8 @@ class Tokenizer:
             self.add_token(TokenType.PERCENT)
         elif c == '^':
             self.add_token(TokenType.CARET)
+        elif c == ':':
+            self.add_token(TokenType.COLON)
         elif c == '*':
             self.add_token(TokenType.STAR_STAR if self.match_('*') else TokenType.STAR)
         elif c == '!':

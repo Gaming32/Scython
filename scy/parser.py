@@ -33,7 +33,16 @@ class Parser:
         if self.match_(TokenType.SEMICOLON):
             initializer = None
         else:
-            initializer = self.expression_statement()
+            initializer = self.expression_statement(
+                (TokenType.SEMICOLON, TokenType.COLON),
+                "Expect ';' or ':' after statement."
+            )
+            if self.previous().type == TokenType.COLON:
+                if isinstance(initializer.value, ast.Name):
+                    initializer.value.ctx = ast.Store()
+                    return [self.for_in_statement(initializer.value, for_word)]
+                else:
+                    raise self.error(self.previous(), 'Invalid assignment target for iteration.')
         if self.check(TokenType.SEMICOLON):
             condition = None
             condition_tok = self.peek()
@@ -61,6 +70,17 @@ class Parser:
             result.insert(0, initializer)
         return result
 
+    def for_in_statement(self, target: ast.Name, for_word: Token) -> ast.For:
+        iterable = self.expression(False)
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses")
+        body = self.optional_block()
+        if self.match_(TokenType.ELSE):
+            else_branch = self.optional_block()
+        else:
+            else_branch = []
+        return self.ast_token(target, iterable, body, else_branch,
+                              klass=ast.For, first=for_word, last=self.previous())
+
     def if_statement(self) -> ast.If:
         if_word = self.previous()
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
@@ -87,7 +107,7 @@ class Parser:
         return self.ast_token(condition, body, else_branch,
                               klass=ast.While, first=while_word, last=self.previous())
 
-    def expression_statement(self, end: TokenType = TokenType.SEMICOLON,
+    def expression_statement(self, end: Union[TokenType, tuple[TokenType]] = TokenType.SEMICOLON,
                                    error: str = "Expect ';' after statement.") -> Union[ast.Expr]:
         expr = self.expression()
         if self.match_(TokenType.EQUAL):
@@ -105,7 +125,10 @@ class Parser:
             statement = ast.Assign(targets=extra, value=value, **self.get_loc(extra[0], value))
         else:
             statement = ast.Expr(expr, **self.get_loc(expr, expr))
-        self.consume(end, error)
+        if isinstance(end, tuple):
+            self.consume_any(end, error)
+        else:
+            self.consume(end, error)
         return statement
 
     def optional_block(self, fill_empty: bool = True) -> list[ast.stmt]:
@@ -303,6 +326,11 @@ class Parser:
     def consume(self, type: TokenType, message: str) -> Token:
         if self.check(type):
             return self.advance()
+        raise self.error(self.peek(), message)
+
+    def consume_any(self, types: tuple[TokenType], message: str) -> Token:
+        if self.match_(*types):
+            return self.peek()
         raise self.error(self.peek(), message)
 
     def error(self, token: Token, message: str) -> SyntaxError:
