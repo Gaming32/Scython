@@ -12,6 +12,7 @@ class Tokenizer:
     start: int
     current: int
     line: int
+    start_column: int
     column: int
 
     def __init__(self, source: str, filename: str = '<unknown>') -> None:
@@ -21,18 +22,20 @@ class Tokenizer:
         self.start = 0
         self.current = 0
         self.line = 1
+        self.start_column = 1
         self.column = 1
 
     def tokenize(self) -> list[Token]:
         while not self.is_at_end():
             self.start = self.current
+            self.start_column = self.column
             self.scan()
 
-        self.tokens.append(Token(TokenType.EOF, '', self.line, self.column, self.current))
+        self.tokens.append(Token(TokenType.EOF, '', self.line, self.start_column, self.current))
         return self.tokens
 
     def error(self, text: str) -> SyntaxError:
-        return SyntaxError(text, (self.filename, self.line, self.column - 1,
+        return SyntaxError(text, (self.filename, self.line, self.start_column,
                            find_line(self.source, self.current)))
 
     def scan(self) -> None:
@@ -239,7 +242,7 @@ class Tokenizer:
             type,
             text,
             self.line,
-            self.column,
+            self.start_column,
             self.current,
             literal
         ))

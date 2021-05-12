@@ -20,11 +20,12 @@ class Parser:
         self.current = 0
 
     def declaration(self) -> list[ast.stmt]:
+        is_async = self.match_(TokenType.ASYNC)
         if self.check(TokenType.DEF):
-            return [self.function('function', self.advance())]
-        return self.statement()
+            return [self.function('function', self.advance(), is_async)]
+        return self.statement(is_async)
 
-    def function(self, kind: str, creator: Token) -> ast.FunctionDef:
+    def function(self, kind: str, creator: Token, is_async: bool) -> ast.FunctionDef:
         name = self.consume(TokenType.IDENTIFIER, f'Expect {kind} name.')
         self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
         arguments = self.parse_args_def()
@@ -44,22 +45,32 @@ class Parser:
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
         return arguments
 
-    def statement(self) -> list[ast.stmt]:
+    def raise_not_async(self, is_async: bool) -> None:
+        if is_async:
+            raise self.error(self.previous(), exceptions.INVALID_ASYNC % self.previous().lexeme)
+
+    def statement(self, is_async: bool = False) -> list[ast.stmt]:
         if self.match_(TokenType.FOR):
-            return self.for_statement()
+            return self.for_statement(is_async)
         elif self.match_(TokenType.IF):
+            self.raise_not_async(is_async)
             return [self.if_statement()]
         elif self.match_(TokenType.RETURN):
+            self.raise_not_async(is_async)
             return [self.return_statement()]
         elif self.match_(TokenType.WHILE):
+            self.raise_not_async(is_async)
             return [self.while_statement()]
         elif self.match_(TokenType.BREAK, TokenType.CONTINUE):
+            self.raise_not_async(is_async)
             word = self.previous()
             self.consume(TokenType.SEMICOLON, f"Expect ';' after {word.lexeme}.")
             return [self.ast_token(klass={
                 TokenType.BREAK:    ast.Break,
                 TokenType.CONTINUE: ast.Continue,
             }.get(word.type), first=word)]
+        if is_async:
+            raise self.error(self.peek(), exceptions.INVALID_ASYNC_EXPR)
         return [self.expression_statement()]
 
     def return_statement(self) -> ast.stmt:
@@ -72,7 +83,7 @@ class Parser:
             self.consume(TokenType.SEMICOLON, "Expect ';' after return value.")
             return self.ast_token(value, klass=ast.Return, first=keyword, last=last)
 
-    def for_statement(self) -> list[ast.stmt]:
+    def for_statement(self, is_async: bool) -> list[ast.stmt]:
         for_word = self.previous()
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
         if self.match_(TokenType.SEMICOLON):
@@ -85,9 +96,11 @@ class Parser:
             if self.previous().type == TokenType.COLON:
                 if isinstance(initializer.value, ast.Name):
                     initializer.value.ctx = ast.Store()
-                    return [self.for_in_statement(initializer.value, for_word)]
+                    return [self.for_in_statement(initializer.value, for_word, is_async)]
                 else:
                     raise self.error(self.previous(), exceptions.ITERATION_INVALID_ASSIGNMENT)
+            if is_async:
+                raise self.error(self.peek(), exceptions.INVALID_ASYNC_FOR)
         if self.check(TokenType.SEMICOLON):
             condition = None
             condition_tok = self.peek()
@@ -115,7 +128,8 @@ class Parser:
             result.insert(0, initializer)
         return result
 
-    def for_in_statement(self, target: ast.Name, for_word: Token) -> ast.For:
+    def for_in_statement(self, target: ast.Name, for_word: Token, is_async: bool) -> Union[ast.For, ast.AsyncFor]:
+        klass = ast.AsyncFor if is_async else ast.For
         iterable = self.expression(False)
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses")
         body = self.optional_block()
@@ -124,7 +138,7 @@ class Parser:
         else:
             else_branch = []
         return self.ast_token(target, iterable, body, else_branch,
-                              klass=ast.For, first=for_word, last=self.previous())
+                              klass=klass, first=for_word, last=self.previous())
 
     def if_statement(self) -> ast.If:
         if_word = self.previous()
@@ -399,8 +413,8 @@ class Parser:
         result = klass(*args)
         result.lineno = first.line
         result.end_lineno = last.line
-        result.col_offset = first.column
-        result.end_col_offset = last.column + len(last.lexeme)
+        result.col_offset = first.column - 1
+        result.end_col_offset = last.column + len(last.lexeme) - 2
         return result
 
     def get_loc(self, left: ast.AST, right: ast.AST):
@@ -427,7 +441,7 @@ class Parser:
 
     def error(self, token: Token, message: str) -> SyntaxError:
         return SyntaxError(message, (self.filename, token.line,
-                                     token.column - 1,
+                                     token.column,
                            find_line(self.source, token.index)))
 
     def check(self, type: TokenType) -> bool:
