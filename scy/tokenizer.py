@@ -1,5 +1,6 @@
 from typing import Any
 
+from scy import exceptions
 from scy.tokens import TokenType, Token, KEYWORDS
 from scy.utils import find_line
 
@@ -110,7 +111,7 @@ class Tokenizer:
             self.identifier()
 
         else:
-            raise self.error('Unexpected character.')
+            raise self.error(exceptions.UNEXPECTED_CHARACTER)
 
     def identifier(self) -> None:
         while self.is_alpha_numeric(self.peek()):
@@ -118,7 +119,7 @@ class Tokenizer:
         text: str = self.source[self.start:self.current]
         type: TokenType = KEYWORDS.get(text, TokenType.IDENTIFIER)
         if type is None:
-            raise self.error(f'Reserved keyword {text!r}.')
+            raise self.error(exceptions.RESERVED_KEYWORD % text)
         self.add_token(type)
 
     def number(self) -> None:
@@ -148,7 +149,7 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(f'Invalid hex string {data!r}.') from None
+                raise self.error(exceptions.INVALID_HEX_STRING % data) from None
         elif code == 'u':
             self.advance()
             data = self.advance()
@@ -158,7 +159,7 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(f'Invalid hex string {data!r}.') from None
+                raise self.error(exceptions.INVALID_HEX_STRING % data) from None
         elif code == 'U':
             self.advance()
             data = self.advance()
@@ -168,20 +169,20 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(f'Invalid hex string {data!r}.') from None
+                raise self.error(exceptions.INVALID_HEX_STRING % data) from None
 
     def string(self, end: str) -> None:
         result = ''
         while self.peek() != end and not self.is_at_end():
             if self.peek() == '\n':
-                raise self.error('Multiline strings not supported.')
+                raise self.error(exceptions.MULTILINE_STRINGS_NOT_SUPPORTED)
             elif self.peek() == '\\':
                 result += self.escape()
             else:
                 result += self.peek()
             self.advance()
         if self.is_at_end():
-            raise self.error('EOF reached during string.')
+            raise self.error(exceptions.EOF_DURING_STRING)
         self.advance()
         self.add_token_literal(TokenType.STRING, result)
 
@@ -221,7 +222,7 @@ class Tokenizer:
 
     def advance(self) -> str:
         if self.is_at_end():
-            raise self.error('Unexpected EOF.')
+            raise self.error(exceptions.UNEXPECTED_EOF)
         char = self.source[self.current]
         self.current += 1
         self.column += 1

@@ -1,4 +1,5 @@
 import ast
+from scy import exceptions
 from typing import Any, Union
 from scy.tokenizer import Tokenizer
 from scy.utils import find_line
@@ -48,9 +49,28 @@ class Parser:
             return self.for_statement()
         elif self.match_(TokenType.IF):
             return [self.if_statement()]
+        elif self.match_(TokenType.RETURN):
+            return [self.return_statement()]
         elif self.match_(TokenType.WHILE):
             return [self.while_statement()]
+        elif self.match_(TokenType.BREAK, TokenType.CONTINUE):
+            word = self.previous()
+            self.consume(TokenType.SEMICOLON, f"Expect ';' after {word.lexeme}.")
+            return [self.ast_token(klass={
+                TokenType.BREAK:    ast.Break,
+                TokenType.CONTINUE: ast.Continue,
+            }.get(word.type), first=word)]
         return [self.expression_statement()]
+
+    def return_statement(self) -> ast.stmt:
+        keyword = self.previous()
+        if self.match_(TokenType.SEMICOLON):
+            return self.ast_token(klass=ast.Return, first=keyword)
+        else:
+            value = self.expression(False)
+            last = self.previous()
+            self.consume(TokenType.SEMICOLON, "Expect ';' after return value.")
+            return self.ast_token(value, klass=ast.Return, first=keyword, last=last)
 
     def for_statement(self) -> list[ast.stmt]:
         for_word = self.previous()
@@ -67,7 +87,7 @@ class Parser:
                     initializer.value.ctx = ast.Store()
                     return [self.for_in_statement(initializer.value, for_word)]
                 else:
-                    raise self.error(self.previous(), 'Invalid assignment target for iteration.')
+                    raise self.error(self.previous(), exceptions.ITERATION_INVALID_ASSIGNMENT)
         if self.check(TokenType.SEMICOLON):
             condition = None
             condition_tok = self.peek()
@@ -137,14 +157,14 @@ class Parser:
         expr = self.expression()
         if self.match_(TokenType.EQUAL):
             if not isinstance(expr, ast.Name):
-                raise self.error(self.previous(), 'Invalid assignment target.')
+                raise self.error(self.previous(), exceptions.INVALID_ASSIGNMENT)
             extra = [expr, self.expression()]
             extra[0].ctx = ast.Store()
             while self.match_(TokenType.EQUAL):
                 if isinstance(extra[-1], ast.Name):
                     extra[-1].ctx = ast.Store()
                 else:
-                    raise self.error(self.previous(), 'Invalid assignment target.')
+                    raise self.error(self.previous(), exceptions.INVALID_ASSIGNMENT)
                 extra.append(self.expression())
             value = extra.pop()
             statement = ast.Assign(targets=extra, value=value, **self.get_loc(extra[0], value))
@@ -179,18 +199,37 @@ class Parser:
     def expression(self, toplevel: bool = True) -> ast.expr:
         if not toplevel:
             return self.assignment_expression()
-        return self.or_()
+        return self.yield_()
 
     def assignment_expression(self) -> ast.expr:
-        expr = self.or_()
+        expr = self.yield_()
         if self.match_(TokenType.EQUAL):
             equals = self.previous()
             value = self.assignment_expression()
             if isinstance(expr, ast.Name):
                 expr.ctx = ast.Store()
                 return ast.NamedExpr(expr, value, **self.get_loc(expr, value))
-            raise self.error(equals, 'Invalid assignement target.')
+            raise self.error(equals, exceptions.INVALID_ASSIGNMENT)
         return expr
+
+    def yield_(self) -> ast.expr:
+        if self.match_(TokenType.YIELD):
+            first_word = self.previous()
+            if self.match_(TokenType.FROM):
+                klass = ast.YieldFrom
+                second_word = self.previous()
+            else:
+                klass = ast.Yield
+                second_word = first_word
+            try:
+                value = self.or_()
+            except SyntaxError as e:
+                if e.msg == exceptions.EXPECT_EXPRESSOIN:
+                    return self.ast_token(klass=klass, first=first_word, last=second_word)
+                else:
+                    raise
+            return self.ast_token(value, klass=klass, first=first_word, last=self.previous())
+        return self.or_()
 
     def or_(self) -> ast.expr:
         left = self.and_()
@@ -348,7 +387,7 @@ class Parser:
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
             return expr
         else:
-            raise self.error(self.peek(), "Expect expression.")
+            raise self.error(self.peek(), exceptions.EXPECT_EXPRESSOIN)
 
     def ast_token(self, *args, klass: type[ast.AST] = ast.Constant,
                   first: Token = None, last: Token = None) -> Any:

@@ -1,17 +1,11 @@
-# myvar = 5 + 3 // 2;
-# a = 5 + a + 3;
-# i = 0;
-# while (i < 10000000) {
-#     i;
-#     i = i + 1;
-# }
-
-
-# for (i = 0; i < 1000000; i = i + 1) i;
-
-def myfn(i) {
-    print(int(i));
+def squares() {
+    for (i = 0;; i = i + 1)
+        yield from range(i ** 2);
 }
 
-for (i : range(10))
-    myfn(i);
+# This generates 1753 lines of text lol
+for (i : squares())
+    if (i > 256)
+        break;
+    else
+        print(i);
