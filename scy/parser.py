@@ -328,20 +328,21 @@ class Parser:
             operator = UNARY_OPERATORS[self.previous().type]()
             right = self.unary()
             return ast.UnaryOp(operator, right, **self.get_loc(right, right))
-        return self.bit_invert()
-
-    def bit_invert(self) -> ast.expr:
-        if self.match_(TokenType.TILDE):
-            right = self.unary()
-            return ast.UnaryOp(ast.Invert(), right, **self.get_loc(right, right))
         return self.power()
 
     def power(self) -> ast.expr:
-        left = self.call()
+        left = self.await_()
         while self.match_(TokenType.STAR_STAR):
-            right = self.call()
+            right = self.await_()
             left = ast.BinOp(left, ast.Pow(), right, **self.get_loc(left, right))
         return left
+
+    def await_(self) -> ast.expr:
+        if self.match_(TokenType.AWAIT):
+            first_word = self.previous()
+            value = self.call()
+            return self.ast_token(value, klass=ast.Await, first=first_word, last=self.previous())
+        return self.call()
 
     def call(self) -> ast.expr:
         expr = self.primary()

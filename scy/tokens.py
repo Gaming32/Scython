@@ -49,6 +49,7 @@ class TokenType(Enum):
     # Keywords.
     ASSERT = auto()
     ASYNC = auto()
+    AWAIT = auto()
     BREAK = auto()
     CATCH = auto()
     CLASS = auto()
@@ -121,6 +122,7 @@ class TokenGroup:
     UNARY_LOW = {
         TokenType.MINUS,
         TokenType.PLUS,
+        TokenType.TILDE,
     }
 
     LITERALS = {
@@ -135,6 +137,7 @@ KEYWORDS: dict[str, Optional[TokenType]] = {
     'as':       None,
     'assert':   TokenType.ASSERT,
     'async':    TokenType.ASYNC,
+    'await':    TokenType.AWAIT,
     'break':    TokenType.BREAK,
     'class':    TokenType.CLASS,
     'continue': TokenType.CONTINUE,
@@ -195,5 +198,5 @@ BINARY_OPERATORS: dict[TokenType, ast.operator] = {
 UNARY_OPERATORS: dict[TokenType, ast.operator] = {
     TokenType.PLUS:  ast.UAdd,
     TokenType.MINUS: ast.USub,
-    TokenType.BANG:  ast.Not,
+    TokenType.TILDE: ast.Invert,
 }
