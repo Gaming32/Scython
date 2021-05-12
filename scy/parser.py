@@ -273,11 +273,33 @@ class Parser:
         return self.power()
 
     def power(self) -> ast.expr:
-        left = self.primary()
+        left = self.call()
         while self.match_(TokenType.STAR_STAR):
-            right = self.primary()
+            right = self.call()
             left = ast.BinOp(left, ast.Pow(), right, **self.get_loc(left, right))
         return left
+
+    def call(self) -> ast.expr:
+        expr = self.primary()
+        while True:
+            if self.match_(TokenType.LEFT_PAREN):
+                expr = self.finish_call(expr)
+            else:
+                break
+        return expr
+
+    def finish_call(self, callee: ast.expr) -> ast.expr:
+        arguments = []
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                arguments.append(self.expression(False))
+                if not self.match_(TokenType.COMMA):
+                    break
+        paren = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments")
+        return ast.Call(callee, arguments, [],
+            lineno=callee.lineno, end_lineno=paren.line,
+            col_offset=callee.col_offset, end_col_offset=paren.column + 1
+        )
 
     def primary(self) -> ast.expr:
         if self.match_(TokenType.FALSE):
