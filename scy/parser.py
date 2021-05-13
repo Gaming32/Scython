@@ -21,19 +21,37 @@ class Parser:
 
     def declaration(self) -> list[ast.stmt]:
         is_async = self.match_(TokenType.ASYNC)
-        if self.check(TokenType.DEF):
-            return [self.function('function', self.advance(), is_async)]
+        if self.match_(TokenType.DEF):
+            return [self.function(self.peek(), is_async)]
+        elif self.match_(TokenType.CLASS):
+            self.raise_if_async(is_async)
+            return [self.class_(self.peek())]
         return self.statement(is_async)
 
-    def function(self, kind: str, creator: Token, is_async: bool) -> ast.FunctionDef:
+    def function(self, creator: Token, is_async: bool) -> ast.FunctionDef:
         klass = ast.AsyncFunctionDef if is_async else ast.FunctionDef
-        name = self.consume(TokenType.IDENTIFIER, f'Expect {kind} name.')
-        self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
+        name = self.consume(TokenType.IDENTIFIER, f'Expect function name.')
+        self.consume(TokenType.LEFT_PAREN, f"Expect '(' after function name.")
         arguments = self.parse_args_def()
-        self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
+        self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before function body.")
         body = self.block()
+        if not body:
+            body = [ast.Pass()]
         return self.ast_token(name.lexeme, arguments, body, [],
             klass=klass, first=creator, last=self.previous())
+
+    def class_(self, creator: Token) -> ast.FunctionDef:
+        name = self.consume(TokenType.IDENTIFIER, f'Expect class name.')
+        if self.match_(TokenType.LEFT_PAREN):
+            args, kwargs, paren = self.parse_args_call()
+        else:
+            args, kwargs, paren = [], [], None
+        self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before class body.")
+        body = self.block()
+        if not body:
+            body = [ast.Pass()]
+        return self.ast_token(name.lexeme, args, kwargs, body, [],
+            klass=ast.ClassDef, first=creator, last=self.previous())
 
     def parse_args_def(self) -> ast.arguments:
         arguments = ast.arguments([], [], None, [], [], None, [])
@@ -46,7 +64,7 @@ class Parser:
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
         return arguments
 
-    def raise_not_async(self, is_async: bool) -> None:
+    def raise_if_async(self, is_async: bool) -> None:
         if is_async:
             raise self.error(self.previous(), exceptions.INVALID_ASYNC % self.previous().lexeme)
 
@@ -54,16 +72,16 @@ class Parser:
         if self.match_(TokenType.FOR):
             return self.for_statement(is_async)
         elif self.match_(TokenType.IF):
-            self.raise_not_async(is_async)
+            self.raise_if_async(is_async)
             return [self.if_statement()]
         elif self.match_(TokenType.RETURN):
-            self.raise_not_async(is_async)
+            self.raise_if_async(is_async)
             return [self.return_statement()]
         elif self.match_(TokenType.WHILE):
-            self.raise_not_async(is_async)
+            self.raise_if_async(is_async)
             return [self.while_statement()]
         elif self.match_(TokenType.BREAK, TokenType.CONTINUE):
-            self.raise_not_async(is_async)
+            self.raise_if_async(is_async)
             word = self.previous()
             self.consume(TokenType.SEMICOLON, f"Expect ';' after {word.lexeme}.")
             return [self.ast_token(klass={
