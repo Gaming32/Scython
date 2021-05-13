@@ -26,13 +26,14 @@ class Parser:
         return self.statement(is_async)
 
     def function(self, kind: str, creator: Token, is_async: bool) -> ast.FunctionDef:
+        klass = ast.AsyncFunctionDef if is_async else ast.FunctionDef
         name = self.consume(TokenType.IDENTIFIER, f'Expect {kind} name.')
         self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
         arguments = self.parse_args_def()
         self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
         body = self.block()
         return self.ast_token(name.lexeme, arguments, body, [],
-            klass=ast.FunctionDef, first=creator, last=self.previous())
+            klass=klass, first=creator, last=self.previous())
 
     def parse_args_def(self) -> ast.arguments:
         arguments = ast.arguments([], [], None, [], [], None, [])
