@@ -13,3 +13,4 @@ EXPECT_EXPRESSOIN = 'Expect expression.'
 INVALID_ASYNC = 'Async keyword not supported with %r statements.'
 INVALID_ASYNC_EXPR = 'Async keyword not supported with expression statements.'
 INVALID_ASYNC_FOR = "Async for loops only compatible with iteration (using ':' syntax)."
+EXPECT_PROPERTY_NAME = "Expect property name after '.'."

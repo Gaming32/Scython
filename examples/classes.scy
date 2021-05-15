@@ -1,17 +1,20 @@
-async class MyClass(a, b, c) {
+class MyClass {
     def __init__(self, obj) {
         # self.value = obj;
     }
 
     def __add__(self, other) {
         # return MyClass(self.value + other.value);
+        return MyClass(5 + 10);
     }
 
-    def __repr__(self) {
-        # return "MyClass(%r)" % self.value;
-    }
+    # def __repr__(self) {
+    #     # return "MyClass(%r)" % self.value;
+    # }
 }
 
 if (__name__ == "__main__") {
-    inst = MyClass();
+    print(globals());
+    inst = MyClass(35);
+    print(inst + MyClass(10));
 }

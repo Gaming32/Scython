@@ -22,8 +22,8 @@ class Tokenizer:
         self.start = 0
         self.current = 0
         self.line = 1
-        self.start_column = 1
-        self.column = 1
+        self.start_column = 0
+        self.column = 0
 
     def tokenize(self) -> list[Token]:
         while not self.is_at_end():
@@ -35,7 +35,7 @@ class Tokenizer:
         return self.tokens
 
     def error(self, text: str) -> SyntaxError:
-        return SyntaxError(text, (self.filename, self.line, self.start_column,
+        return SyntaxError(text, (self.filename, self.line, self.start_column + 1,
                            find_line(self.source, self.current)))
 
     def scan(self) -> None:
@@ -105,7 +105,7 @@ class Tokenizer:
 
         elif c == '\n':
             self.line += 1
-            self.column = 1
+            self.column = 0
 
         elif c in '"\'':
             self.string(c)

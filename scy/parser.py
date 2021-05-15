@@ -36,7 +36,7 @@ class Parser:
         self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before function body.")
         body = self.block()
         if not body:
-            body = [ast.Pass()]
+            body = [self.ast_token(klass=ast.Pass)]
         return self.ast_token(name.lexeme, arguments, body, [],
             klass=klass, first=creator, last=self.previous())
 
@@ -49,7 +49,7 @@ class Parser:
         self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before class body.")
         body = self.block()
         if not body:
-            body = [ast.Pass()]
+            body = [self.ast_token(klass=ast.Pass)]
         return self.ast_token(name.lexeme, args, kwargs, body, [],
             klass=ast.ClassDef, first=creator, last=self.previous())
 
@@ -382,6 +382,12 @@ class Parser:
         while True:
             if self.match_(TokenType.LEFT_PAREN):
                 expr = self.finish_call(expr)
+            elif self.match_(TokenType.DOT):
+                name = self.consume(TokenType.IDENTIFIER, exceptions.EXPECT_PROPERTY_NAME)
+                expr = ast.Attribute(expr, name.lexeme, ast.Load(),
+                    lineno=expr.lineno, end_lineno=name.line,
+                    col_offset=expr.col_offset, end_col_offset=name.column + len(name.lexeme)
+                )
             else:
                 break
         return expr
@@ -432,8 +438,8 @@ class Parser:
         result = klass(*args)
         result.lineno = first.line
         result.end_lineno = last.line
-        result.col_offset = first.column - 1
-        result.end_col_offset = last.column + len(last.lexeme) - 2
+        result.col_offset = first.column
+        result.end_col_offset = last.column + len(last.lexeme)
         return result
 
     def get_loc(self, left: ast.AST, right: ast.AST):
@@ -460,7 +466,7 @@ class Parser:
 
     def error(self, token: Token, message: str) -> SyntaxError:
         return SyntaxError(message, (self.filename, token.line,
-                                     token.column,
+                                     token.column + 1,
                            find_line(self.source, token.index)))
 
     def check(self, type: TokenType) -> bool:
