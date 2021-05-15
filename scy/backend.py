@@ -2,8 +2,8 @@ import ast
 from typing import Union
 
 from scy.parser import parse_tree
-from scy.tokens import Token
 from scy.tokenizer import tokenize
+from scy.tokens import Token
 
 
 def parse(source, filename: str = '<unknown>', mode: str = 'exec') -> Union[ast.Expression, ast.Module]:

@@ -1,11 +1,10 @@
 import ast
-from scy import exceptions
 from typing import Any, Union
-from scy.tokenizer import Tokenizer
+
+from scy import exceptions
+from scy.tokens import (BINARY_OPERATORS, COMPARISON_OPERATORS,
+                        UNARY_OPERATORS, Token, TokenGroup, TokenType)
 from scy.utils import find_line
-
-from scy.tokens import BINARY_OPERATORS, COMPARISON_OPERATORS, TokenGroup, TokenType, Token, UNARY_OPERATORS
-
 
 ASSIGNABLES = (
     ast.Attribute,

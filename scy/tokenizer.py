@@ -1,7 +1,7 @@
 from typing import Any
 
 from scy import exceptions
-from scy.tokens import TokenType, Token, KEYWORDS
+from scy.tokens import KEYWORDS, Token, TokenType
 from scy.utils import find_line
 
 

@@ -1,8 +1,7 @@
-import ast
 import argparse
+import ast
 import builtins
 import sys
-from typing import Optional
 import time
 
 from scy.backend import parse
