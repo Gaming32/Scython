@@ -7,6 +7,16 @@ from scy.utils import find_line
 from scy.tokens import BINARY_OPERATORS, COMPARISON_OPERATORS, TokenGroup, TokenType, Token, UNARY_OPERATORS
 
 
+ASSIGNABLES = (
+    ast.Attribute,
+    ast.Subscript,
+    ast.Starred,
+    ast.Name,
+    ast.List,
+    ast.Tuple,
+)
+
+
 class Parser:
     tokens: list[Token]
     filename: str
@@ -189,12 +199,12 @@ class Parser:
                                    error: str = "Expect ';' after statement.") -> Union[ast.Expr]:
         expr = self.expression()
         if self.match_(TokenType.EQUAL):
-            if not isinstance(expr, ast.Name):
+            if not isinstance(expr, ASSIGNABLES):
                 raise self.error(self.previous(), exceptions.INVALID_ASSIGNMENT)
             extra = [expr, self.expression()]
             extra[0].ctx = ast.Store()
             while self.match_(TokenType.EQUAL):
-                if isinstance(extra[-1], ast.Name):
+                if isinstance(extra[-1], ASSIGNABLES):
                     extra[-1].ctx = ast.Store()
                 else:
                     raise self.error(self.previous(), exceptions.INVALID_ASSIGNMENT)
@@ -239,7 +249,7 @@ class Parser:
         if self.match_(TokenType.EQUAL):
             equals = self.previous()
             value = self.assignment_expression()
-            if isinstance(expr, ast.Name):
+            if isinstance(expr, ASSIGNABLES):
                 expr.ctx = ast.Store()
                 return ast.NamedExpr(expr, value, **self.get_loc(expr, value))
             raise self.error(equals, exceptions.INVALID_ASSIGNMENT)
