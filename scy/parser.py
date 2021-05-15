@@ -78,7 +78,10 @@ class Parser:
             raise self.error(self.previous(), exceptions.INVALID_ASYNC % self.previous().lexeme)
 
     def statement(self, is_async: bool = False) -> list[ast.stmt]:
-        if self.match_(TokenType.FOR):
+        if self.match_(TokenType.IMPORT):
+            self.raise_if_async(is_async)
+            return [self.import_statement()]
+        elif self.match_(TokenType.FOR):
             return self.for_statement(is_async)
         elif self.match_(TokenType.IF):
             self.raise_if_async(is_async)
@@ -100,6 +103,39 @@ class Parser:
         if is_async:
             raise self.error(self.peek(), exceptions.INVALID_ASYNC_EXPR)
         return [self.expression_statement()]
+
+    def import_statement(self) -> ast.stmt:
+        word = self.previous()
+        names = self.names_with_alias()
+        semi = self.consume(TokenType.SEMICOLON, "Expect ';' after import statement.")
+        return self.ast_token(names, klass=ast.Import, first=word, last=semi)
+
+    def names_with_alias(self) -> list[ast.alias]:
+        paren = self.match_(TokenType.LEFT_PAREN)
+        names = [self.name_with_alias()]
+        while self.match_(TokenType.COMMA):
+            names.append(self.name_with_alias())
+        if paren:
+            self.consume(TokenType.RIGHT_PAREN, "Expect ')' after names.")
+        return names
+        
+    def name_with_alias(self) -> ast.alias:
+        name, name_first, name_last = self.dotted_name('Expect name to import.')
+        if self.match_(TokenType.AS):
+            asname, asname_first, asname_last = self.dotted_name('Expect alias name.')
+            return self.ast_token(name, asname,
+                                  klass=ast.alias, first=name_first, last=asname_last)
+        else:
+            return self.ast_token(name, None, klass=ast.alias, first=name_first, last=name_last)
+
+    def dotted_name(self, error: str) -> tuple[str, Token, Token]:
+        first = self.consume_any((TokenType.DOT, TokenType.IDENTIFIER), error)
+        result = first.lexeme
+        last = first
+        while self.match_(TokenType.DOT, TokenType.IDENTIFIER):
+            last = self.previous()
+            result += last.lexeme
+        return result, first, last
 
     def return_statement(self) -> ast.stmt:
         keyword = self.previous()
@@ -217,6 +253,28 @@ class Parser:
         else:
             self.consume(end, error)
         return statement
+
+    def multi_param_list(self, tokens: dict[TokenType, TokenType],
+                         allow_empty: bool = True,
+                         error: str = 'Invalid list token %r.') -> list[ast.expr]:
+        if self.match_(*tokens.keys()):
+            ending = tokens[self.previous().type]
+        elif allow_empty:
+            ending = None
+        else:
+            raise self.error(self.peek(), error % self.peek().lexeme)
+        return self.param_list(ending, f'Expected {ending.name.lower()} to end list.')
+
+    def param_list(self, end_token: TokenType = None, error: str = '') -> list[ast.expr]:
+        if end_token is not None:
+            if self.match_(end_token):
+                return []
+        result = [self.expression(False)]
+        while not self.match_(TokenType.COMMA):
+            result.append(self.expression(False))
+        if end_token is not None:
+            raise self.error(self.peek(), error)
+        return result
 
     def optional_block(self, fill_empty: bool = True) -> list[ast.stmt]:
         if self.match_(TokenType.LEFT_BRACE):
@@ -470,7 +528,7 @@ class Parser:
 
     def consume_any(self, types: tuple[TokenType], message: str) -> Token:
         if self.match_(*types):
-            return self.peek()
+            return self.previous()
         raise self.error(self.peek(), message)
 
     def error(self, token: Token, message: str) -> SyntaxError:

@@ -7,6 +7,7 @@ from typing import Any, Optional
 class TokenType(Enum):
     # Single-character tokens.
     AT = auto()
+    AS = auto()
     CARET = auto()
     COLON = auto()
     LEFT_PAREN = auto()
@@ -136,7 +137,7 @@ class TokenGroup:
 
 KEYWORDS: dict[str, Optional[TokenType]] = {
     'and':      None,
-    'as':       None,
+    'as':       TokenType.AS,
     'assert':   TokenType.ASSERT,
     'async':    TokenType.ASYNC,
     'await':    TokenType.AWAIT,
