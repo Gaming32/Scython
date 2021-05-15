@@ -42,7 +42,7 @@ def _run_code(code, run_globals, init_globals=None,
     return run_globals
 
 
-def main():
+def main() -> int:
     args = parser.parse_args()
     if args.mode == 'auto':
         args.mode = 'run'
@@ -56,7 +56,6 @@ def main():
         print(ast.dump(tree, indent=3, include_attributes=True))
     elif args.mode == 'run':
         compiled = compile(tree, filename, 'exec')
-        # exec(compiled)
         _run_code(compiled, {
             '__builtins__': builtins
         }, mod_name='__main__', script_name=filename)
@@ -76,7 +75,8 @@ def main():
             print(f'Failed to compile "{filename}" (AST had {count_nodes(tree)} nodes) in {end - start}ns.')
             import traceback
             traceback.print_exception(SyntaxError, error, error.__traceback__, 0)
+            return 1
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
