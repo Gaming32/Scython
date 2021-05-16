@@ -35,7 +35,10 @@ class Tokenizer:
         return self.tokens
 
     def error(self, text: str) -> SyntaxError:
-        return SyntaxError(text, (self.filename, self.line, self.start_column + 1,
+        return self.errorat(text, self.start_column)
+
+    def errorat(self, text: str, where: int) -> SyntaxError:
+        return SyntaxError(text, (self.filename, self.line, where + 1,
                            find_line(self.source, self.current)))
 
     def scan(self) -> None:
@@ -110,6 +113,12 @@ class Tokenizer:
         elif c in '"\'':
             self.string(c)
 
+        elif c == 'r':
+            if self.peek() in '"\'':
+                self.string(self.advance(), 'r')
+            else:
+                self.identifier()
+
         elif self.is_digit(c):
             self.number()
         elif self.is_alpha(c):
@@ -141,7 +150,11 @@ class Tokenizer:
     def number(self) -> None:
         base = 10
         if self.previous() == '0':
-            modifier = self.advance().lower()
+            try:
+                modifier = self.advance().lower()
+            except SyntaxError:
+                self.add_token_literal(TokenType.INTEGER, 0)
+                return
             if modifier == 'x':
                 base = 16
             elif modifier == 'b':
@@ -149,7 +162,8 @@ class Tokenizer:
             elif modifier == 'o':
                 base = 8
             else:
-                raise self.error(exceptions.INVALID_BASE_MODIFIER % modifier)
+                if self.is_digit(modifier):
+                    raise self.errorat(exceptions.NUMBER_NOT_ZERO, self.start_column + 1)
         while self.is_digit(self.peek()) or self.peek() == '_':
             self.advance()
         if self.peek() == '.':
@@ -160,10 +174,10 @@ class Tokenizer:
                 while self.is_digit(self.peek()) or self.peek() == '_':
                     self.advance()
             if self.previous() == '_':
-                raise self.error(exceptions.UNDERSCORE_ENDED_NUMBER)
+                raise self.errorat(exceptions.UNDERSCORE_ENDED_NUMBER, self.column - 1)
             return self.add_token_literal(TokenType.DECIMAL, float(self.source[self.start:self.current]))
         if self.previous() == '_':
-            raise self.error(exceptions.UNDERSCORE_ENDED_NUMBER)
+            raise self.errorat(exceptions.UNDERSCORE_ENDED_NUMBER, self.column - 1)
         self.add_token_literal(TokenType.INTEGER, int(self.source[self.start:self.current], base))
 
     def escape(self) -> str:
@@ -183,7 +197,7 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(exceptions.INVALID_HEX_STRING % data) from None
+                raise self.errorat(exceptions.INVALID_HEX_STRING % data, self.column - 1) from None
         elif code == 'u':
             self.advance()
             data = self.advance()
@@ -193,7 +207,7 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(exceptions.INVALID_HEX_STRING % data) from None
+                raise self.errorat(exceptions.INVALID_HEX_STRING % data, self.column - 3) from None
         elif code == 'U':
             self.advance()
             data = self.advance()
@@ -203,20 +217,25 @@ class Tokenizer:
             try:
                 return chr(int(data, 16))
             except ValueError:
-                raise self.error(exceptions.INVALID_HEX_STRING % data) from None
+                raise self.errorat(exceptions.INVALID_HEX_STRING % data, self.column - 7) from None
+        elif code == '\\':
+            return '\\'
+        else:
+            raise self.errorat(exceptions.INVALID_ESCAPE % code, self.column)
 
-    def string(self, end: str) -> None:
+    def string(self, end: str, modifiers: str = '') -> None:
+        modifiers = set(modifiers) # Faster contents check
         result = ''
         while self.peek() != end and not self.is_at_end():
             if self.peek() == '\n':
-                raise self.error(exceptions.MULTILINE_STRINGS_NOT_SUPPORTED)
-            elif self.peek() == '\\':
+                raise self.errorat(exceptions.MULTILINE_STRINGS_NOT_SUPPORTED, self.column)
+            elif 'r' not in modifiers and self.peek() == '\\':
                 result += self.escape()
             else:
                 result += self.peek()
             self.advance()
         if self.is_at_end():
-            raise self.error(exceptions.EOF_DURING_STRING)
+            raise self.errorat(exceptions.EOF_DURING_STRING, self.column)
         self.advance()
         self.add_token_literal(TokenType.STRING, result)
 
@@ -259,7 +278,7 @@ class Tokenizer:
 
     def advance(self) -> str:
         if self.is_at_end():
-            raise self.error(exceptions.UNEXPECTED_EOF)
+            raise self.errorat(exceptions.UNEXPECTED_EOF, self.column)
         char = self.source[self.current]
         self.current += 1
         self.column += 1

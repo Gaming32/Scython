@@ -1,0 +1,8 @@
+print("hello\n\\");
+print(r"hello\n\\");
+print("hello {!r}".format(35));
+print("hello %r" % 35);
+
+# These lines will fail
+# print("hello\n\");
+# print("hello\g");
