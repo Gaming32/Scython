@@ -81,6 +81,9 @@ class Parser:
         if self.match_(TokenType.IMPORT):
             self.raise_if_async(is_async)
             return [self.import_statement()]
+        elif self.match_(TokenType.FROM):
+            self.raise_if_async(is_async)
+            return [self.from_statement()]
         elif self.match_(TokenType.FOR):
             return self.for_statement(is_async)
         elif self.match_(TokenType.IF):
@@ -110,17 +113,36 @@ class Parser:
         semi = self.consume(TokenType.SEMICOLON, "Expect ';' after import statement.")
         return self.ast_token(names, klass=ast.Import, first=word, last=semi)
 
-    def names_with_alias(self) -> list[ast.alias]:
+    def from_statement(self) -> ast.stmt:
+        from_word = self.previous()
+        module, module_name_first, dotted_name_last = self.dotted_name('Expect module name.')
+        level = 0
+        for char in module:
+            if char == '.':
+                level += 1
+            else:
+                break
+        module = module[level:]
+        self.consume(TokenType.IMPORT, "Expect 'import' after module name.")
+        names = self.names_with_alias(allow_star=True)
+        semi = self.consume(TokenType.SEMICOLON, "Expect ';' after from..import statement.")
+        return self.ast_token(module, names, level, klass=ast.ImportFrom, first=from_word, last=semi)
+
+    def names_with_alias(self, allow_star: bool = False) -> list[ast.alias]:
         paren = self.match_(TokenType.LEFT_PAREN)
-        names = [self.name_with_alias()]
+        names = [self.name_with_alias(allow_star)]
         while self.match_(TokenType.COMMA):
-            names.append(self.name_with_alias())
+            names.append(self.name_with_alias(allow_star))
         if paren:
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after names.")
         return names
-        
-    def name_with_alias(self) -> ast.alias:
+
+    def name_with_alias(self, allow_star: bool = False) -> ast.alias:
+        if allow_star and self.match_(TokenType.STAR):
+            return self.ast_token('*', None, klass=ast.alias, first=self.previous())
         name, name_first, name_last = self.dotted_name('Expect name to import.')
+        if name.startswith('.'):
+            raise self.error(name_first, 'Cannot have relative name here.')
         if self.match_(TokenType.AS):
             asname, asname_first, asname_last = self.dotted_name('Expect alias name.')
             return self.ast_token(name, asname,

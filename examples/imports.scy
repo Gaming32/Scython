@@ -1,13 +1,10 @@
-import scy.backend as be;
 import ast;
-import sys, os;
-# from scy.backend import parse;
+from scy.backend import parse;
+from scy.builtins import *;
 
-print(ast, sys, os);
-print(be);
+code = "print('hello');";
 
-# code = "print('hello');";
+tree = parse(code);
 
-# tree = parse(code);
-
-# print(ast.dump(tree));
+print(ast.dump(tree));
+scy_exec(code);
