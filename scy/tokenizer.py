@@ -139,14 +139,32 @@ class Tokenizer:
                 self.add_token(TokenType.DOT)
 
     def number(self) -> None:
-        while self.is_digit(self.peek()):
+        base = 10
+        if self.previous() == '0':
+            modifier = self.advance().lower()
+            if modifier == 'x':
+                base = 16
+            elif modifier == 'b':
+                base = 2
+            elif modifier == 'o':
+                base = 8
+            else:
+                raise self.error(exceptions.INVALID_BASE_MODIFIER % modifier)
+        while self.is_digit(self.peek()) or self.peek() == '_':
             self.advance()
-        if self.peek() == '.' and self.is_digit(self.peek_next()):
+        if self.peek() == '.':
+            if base != 10:
+                raise self.error(exceptions.ALTERNATE_BASE_FLOAT)
             self.advance()
-            while self.is_digit(self.peek()):
-                self.advance()
+            if self.is_digit(self.peek()):
+                while self.is_digit(self.peek()) or self.peek() == '_':
+                    self.advance()
+            if self.previous() == '_':
+                raise self.error(exceptions.UNDERSCORE_ENDED_NUMBER)
             return self.add_token_literal(TokenType.DECIMAL, float(self.source[self.start:self.current]))
-        self.add_token_literal(TokenType.INTEGER, int(self.source[self.start:self.current]))
+        if self.previous() == '_':
+            raise self.error(exceptions.UNDERSCORE_ENDED_NUMBER)
+        self.add_token_literal(TokenType.INTEGER, int(self.source[self.start:self.current], base))
 
     def escape(self) -> str:
         self.advance()
@@ -211,6 +229,9 @@ class Tokenizer:
         self.current += 1
         self.column += 1
         return True
+
+    def previous(self) -> str:
+        return self.source[self.current - 1]
 
     def peek(self) -> str:
         if self.is_at_end():

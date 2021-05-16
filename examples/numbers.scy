@@ -1,0 +1,11 @@
+print(  1010);
+print(0x1010);
+print(0b1010);
+print(0o1010);
+
+print(35.3);
+# print(0x35.3); # This line will fail to compile. Uncomment to see the error.
+
+print(100_000_000);
+print(100_000_000.);
+print(100_000_000.35_55);

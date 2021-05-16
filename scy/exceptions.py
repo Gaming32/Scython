@@ -5,6 +5,9 @@ INVALID_HEX_STRING = 'Invalid hex string %r.'
 MULTILINE_STRINGS_NOT_SUPPORTED = 'Multiline strings not supported.'
 EOF_DURING_STRING = 'EOF reached during string.'
 UNEXPECTED_EOF = 'Unexpected EOF.'
+INVALID_BASE_MODIFIER = 'Invalid base modifier %r.'
+ALTERNATE_BASE_FLOAT = 'Cannot have alternate bases on floats.'
+UNDERSCORE_ENDED_NUMBER = "Cannot end number literal with '_'."
 
 # Parser exceptions
 INVALID_ASSIGNMENT = 'Invalid assignment target.'
