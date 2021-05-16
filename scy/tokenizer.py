@@ -50,8 +50,6 @@ class Tokenizer:
             self.add_token(TokenType.RIGHT_BRACE)
         elif c == ',':
             self.add_token(TokenType.COMMA)
-        elif c == '.':
-            self.add_token(TokenType.DOT)
         elif c == '-':
             self.add_token(TokenType.MINUS)
         elif c == '+':
@@ -68,6 +66,8 @@ class Tokenizer:
             self.add_token(TokenType.COLON)
         elif c == '@':
             self.add_token(TokenType.AT)
+        elif c == '.':
+            self.ellipsis()
         elif c == '*':
             self.add_token(TokenType.STAR_STAR if self.match_('*') else TokenType.STAR)
         elif c == '!':
@@ -126,6 +126,17 @@ class Tokenizer:
         if type is None:
             raise self.error(exceptions.RESERVED_KEYWORD % text)
         self.add_token(type)
+
+    def ellipsis(self) -> None:
+        count = 1
+        while count < 3 and self.peek() == '.':
+            count += 1
+            self.advance()
+        if count == 3:
+            self.add_token(TokenType.ELLIPSIS)
+        else:
+            for _ in range(count):
+                self.add_token(TokenType.DOT)
 
     def number(self) -> None:
         while self.is_digit(self.peek()):

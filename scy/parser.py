@@ -506,6 +506,8 @@ class Parser:
             return self.ast_token(True)
         elif self.match_(TokenType.NONE):
             return self.ast_token(None)
+        elif self.match_(TokenType.ELLIPSIS):
+            return self.ast_token(Ellipsis)
         elif self.match_(*TokenGroup.LITERALS):
             return self.ast_token(self.previous().literal)
         elif self.match_(TokenType.IDENTIFIER):

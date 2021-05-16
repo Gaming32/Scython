@@ -6,7 +6,7 @@ with open('README.md', 'r') as fp:
 
 setup(
     name = 'Scython',
-    version = '0.1.0',
+    version = '0.1.1',
     description = 'A C-like alternative syntax parser/front-end for Python',
     long_description = long_description,
     long_description_content_type = 'text/markdown',
